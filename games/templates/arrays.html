@@ -1,0 +1,391 @@
+<html>
+    {% extends 'base.html' %}
+    {% block content %}
+    <head>
+        <meta charset="UTF-8" />
+        <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+        <style type="text/css">
+            body {
+                margin: 0;
+            }
+        </style>
+    </head>
+    {% load static %}
+    <script>
+        var height = 750; 
+        var width = 750; 
+
+        var config = {
+            type: Phaser.AUTO,
+            width: width, 
+            height: height, 
+            scene: {
+                preload: preload, 
+                update: update, 
+                create: create
+            },
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 200 },
+                    debug: false
+                }
+            }
+        };
+
+        var game = new Phaser.Game(config);
+
+        var starTypes = ['star', 'pink_star', 'green_star'];
+        //  Preload images into the game 
+        function preload () {
+            this.load.image('sky', "{% static 'assets/sky.png' %}"); 
+            this.load.image('ground', '{% static "assets/platform.png" %}');
+            this.load.image('bridge', '{% static "assets/platform2.png" %}')
+            this.load.image('crate', '{% static "assets/crate.png" %}');
+            this.load.image('star', '{% static "assets/star2.png" %}');
+            this.load.spritesheet('player', '{% static "assets/dude.png" %}', { frameWidth: 32, frameHeight: 48 });
+            this.load.image('star1', '{% static "assets/star1.png" %}');
+            this.load.image('star2', '{% static "assets/star2.png" %}');
+            this.load.image('star3', '{% static "assets/star3.png" %}');
+            this.load.image('pink_star1', '{% static "assets/pink_star1.png" %}');
+            this.load.image('pink_star2', '{% static "assets/pink_star2.png" %}');
+            this.load.image('pink_star3', '{% static "assets/pink_star3.png" %}');
+            this.load.image('green_star1', '{% static "assets/green_star1.png" %}');
+            this.load.image('green_star2', '{% static "assets/green_star2.png" %}');
+            this.load.image('green_star3', '{% static "assets/green_star3.png" %}');
+            this.load.image('orange_star', '{% static "assets/orange_star1.png" %}');
+            this.load.image('button', '{% static "assets/button.png" %}');
+        }
+
+        var scene; 
+        var cursors; 
+        //  Create initial game
+        function create () {
+            scene = this; 
+            cursors = scene.input.keyboard.createCursorKeys();
+            
+            scene.add.image(width / 2, height / 2, 'sky').setScale(3);
+
+            createArrayScreen(); 
+        }
+
+        var arrayCreateScreen; 
+        var arrayCreated = false; 
+        //  Create the screen where player creates their array 
+        function createArrayScreen () {
+            arrayCreateScreen = scene.physics.add.staticGroup(); 
+            
+            //  Create buttons 
+            var start = 95; 
+            var gap = 110; 
+            var buttonNum = 5; 
+            for (var i = 0; i <= buttonNum; i++) {
+                //  Create and add effect to button 
+                var button = arrayCreateScreen.create(start + gap * i, 200, 'button').setScale(.3).setInteractive();
+                button.setData("num", (i+5)); 
+                button.on('pointerup', createArray, {"button": button}); 
+
+                //  Create text on button 
+                var style = {"color": "black"}; 
+                arrayCreateScreen.add(scene.add.text(start + gap * i - 5, 190, "" + (i+5), style));
+            }
+
+            //  Add instructions text 
+            var style = {color: "black", fontSize: "20px"};
+            var text = scene.add.text(start - 20, 100, "Choose a number to pick the size of your array!", style);
+            arrayCreateScreen.add(text); 
+        }
+        
+        var cratesGroup; 
+        //  Create an array to show the player
+        function createArray () {
+            if (arrayCreated) {
+                cratesGroup.clear(true, true); 
+            }
+            cratesGroup = scene.physics.add.staticGroup(); 
+
+            //  Create crates + text 
+            crateNum = this.button.getData("num"); 
+            var start = 75; 
+            for (var i = 0; i < crateNum; i++) {
+                cratesGroup.create(60 * i + start, height - 300, 'crate').setScale(.3); 
+                var style = {color: "black"};
+                cratesGroup.add(scene.add.text(60 * i + start, height - 250, "" + i, style)); 
+            }
+
+            if (!arrayCreated) {
+                //  Add continue button 
+                var style = {color: "black", fontSize: "20px"};
+                var text = scene.add.text(width / 2, height - 100, "Press space to continue", style);
+                text.setX(width / 2 - text.width / 2); 
+                arrayCreateScreen.add(text); 
+            }
+            arrayCreated = true; 
+        }
+
+        var homeScreen; 
+        var onHomeScreen = false; 
+        var moveFromHomeScreen = false; 
+        function createHomeScreen () {
+            //  Allow player to move from home screen after a short delay 
+            scene.time.addEvent({delay: 1000, callback: setMoveFromHomeScreen, callbackScope: this});
+
+            //  Add start screen/instructions 
+            homeScreen = scene.physics.add.staticGroup(); 
+            var style = {color: "black", wordWrap: {width: 400}};
+
+            var text = scene.add.text(width / 2 - 200, 100, "In this game, your points are determined by the values in your 'array' of crates.", style);
+            homeScreen.add(text); 
+            
+            homeScreen.create(width / 2 - 175, 200, 'crate').setScale(.25);
+            text = scene.add.text(width / 2 - 175, 225, "0"); 
+            homeScreen.add(text); 
+            text = scene.add.text(width / 2 - 175, 163, "0", style);
+            homeScreen.add(text); 
+            text = scene.add.text(width / 2 - 140, 170, "The black numbers above the crate represent the score in each crate. The white numbers represent the crate's index in the array.", style);
+            homeScreen.add(text); 
+
+            text = scene.add.text(width / 2 - 200, 270, "Get points by catching the falling stars! Different stars have different values and different effects. Each star will affect the crate whose index matches the CURRENT INDEX", style); 
+            homeScreen.add(text); 
+
+            homeScreen.create(width / 2 - 180, 425, 'star1').setScale(1.5);
+            homeScreen.create(width / 2 - 180, 475, 'green_star1').setScale(1.5);
+            homeScreen.create(width / 2 - 180, 525, 'pink_star1').setScale(1.5);
+            homeScreen.create(width / 2 - 180, 575, 'orange_star').setScale(1.5);
+            
+            text = scene.add.text(width / 2 - 150, 410, "Yellow stars set the score in the crate to the value of the star.", style);
+            homeScreen.add(text); 
+            text = scene.add.text(width / 2 - 150, 460, "Green stars multiply the score in a crate by the value of the star.", style);
+            homeScreen.add(text); 
+            text = scene.add.text(width / 2 - 150, 510, "Pink stars increase the score in a crate by the value of the star.", style);
+            homeScreen.add(text); 
+            text = scene.add.text(width / 2 - 150, 560, "Orange stars increment the index.", style);
+            homeScreen.add(text);
+
+            text = scene.add.text(width / 2 - 200, 630, "Good luck, and try to maximize your score! Press space to begin!", style);
+            homeScreen.add(text);
+
+            onHomeScreen = true; 
+        }
+
+        //  Allow player to move from home screen 
+        function setMoveFromHomeScreen () {
+            moveFromHomeScreen = true; 
+        }
+
+        var ground; 
+        var crateText; 
+        var crates = [];
+        var scores = []; 
+        var scoreTexts = []; 
+        var indexText; 
+        var curCrate; 
+        var player; 
+        var stars; 
+        var gameStarted = false; 
+        var gameOver = false; 
+        var restarted = false; 
+        //  Create a level with a certain number of random stars
+        function startGame () {
+            crates = []; 
+
+            //  Add background 
+            var GROUND_WIDTH = 400;
+            ground = scene.physics.add.staticGroup(); 
+            for (var start = 0; start <= width + GROUND_WIDTH; start += GROUND_WIDTH) {
+                ground.create(start, height - 15, 'ground');
+                ground.create(start, height - 200, 'bridge');
+            }
+            
+            //  Add crates, scores, and indices
+            for (var i = 0; i < crateNum; i++) {
+                crates.push(scene.add.image(60 * i + 25, height - 53, 'crate').setScale(.25)); 
+                scores.push(0); 
+                scoreTexts[i] = scene.add.text(60 * i + 25, height - 90, scores[i], {color: "black"});
+            }
+            indexText = scene.physics.add.staticGroup();
+            for (var i = 0; i < crateNum; i++) {
+                indexText.add(scene.add.text(60 * i + 25, height - 30, "" + i));
+            }
+
+            //  Player. Animation code adapted from Phaser tutorial 
+            player = scene.physics.add.sprite(width / 2, height - 300, 'player');
+            scene.physics.add.collider(player, ground);
+            player.setCollideWorldBounds(true);
+            if (gameStarted && !restarted) {
+                scene.anims.create({
+                    key: 'left',
+                    frames: scene.anims.generateFrameNumbers('player', { start: 0, end: 3 }),
+                    frameRate: 10,
+                    repeat: -1
+                });
+
+                scene.anims.create({
+                    key: 'turn',
+                    frames: [ { key: 'player', frame: 4 } ],
+                    frameRate: 20
+                });
+
+                scene.anims.create({
+                    key: 'right',
+                    frames: scene.anims.generateFrameNumbers('player', { start: 5, end: 8 }),
+                    frameRate: 10,
+                    repeat: -1
+                });
+            }
+        
+            //  Setup for gameplay
+            stars = scene.physics.add.group();
+            scene.physics.add.overlap(ground, stars, destroyStar, null, this); 
+            scene.physics.add.overlap(player, stars, collectStar, null, this); 
+
+            createLevel(); 
+        }
+        
+        var count; 
+        //  Create a level, spawning stars 
+        function createLevel () {
+            curCrate = 0; 
+            crateText = scene.add.text(150, height - 150, "CURRENT INDEX: 0", {color: "black", fontSize: "30px"});
+            
+            var delay = 1000; 
+            var repeat = 50; 
+            count = 0; 
+            scene.time.addEvent({ delay: delay, callback: spawnStars, callbackScope: this, repeat: repeat - 1 });
+            scene.time.addEvent({delay: delay * 5, callback: spawnIncStars, callbackScope: this, repeat: Math.floor(repeat / 5) - 1});
+            scene.time.addEvent({ delay: delay * repeat + 3000, callback: endGame, callbackScope: this});
+        }
+
+        var finalScoreText; 
+        var restartText; 
+        //  End the game 
+        function endGame () {
+            gameOver = true; 
+            
+            //  Determine and display final score 
+            var finalScore = 0; 
+            for (var i = 0; i < scores.length; i++) {
+                finalScore += scores[i]; 
+            }
+            var style = {color: "black", fontSize: '30px'};
+            finalScoreText = scene.add.text(width / 2, 200, "Score: " + finalScore.toString(), style);
+            finalScoreText.setX(width / 2 - finalScoreText.width / 2); 
+
+            restartText = scene.add.text(width / 2, 300, "Press space to restart", {color: "black"});
+            restartText.setX(width / 2 - restartText.width / 2);
+        }
+
+        //  Spawn random objects 
+        function spawnStars () { 
+            count += 1; 
+            for (var i = 0; i < 2; i++) {
+                //  Determine which type of star will be spawned 
+                var starTypeIndex = Phaser.Math.Between(0, 2); 
+                var starType = starTypes[starTypeIndex];
+                var starValue = Phaser.Math.Between(1, 3);
+                var starName = starType + starValue.toString(); 
+
+                //  Spawn star and add data to remember effects 
+                var star = stars.create(Phaser.Math.Between(0, width), 0, starName).setScale(1.5); 
+                star.setData('starType', starType); 
+                star.setData('starValue', starValue);
+            }
+        }
+
+        //  Spawn incrementing/decrementing stars 
+        function spawnIncStars () {
+            for (var i = 0; i <= width; i+=50) {
+                var star = stars.create(i, 0, "orange_star").setScale(1.5);
+                star.setData('starType', 'orange_star');
+            }
+        }
+
+        // Response to inputs as game is played. 
+        function update () {
+            //  Move and animate player 
+            if (gameStarted) {
+                var velocity = 200; 
+                if (cursors.left.isDown) {
+                    player.setVelocityX(-velocity);
+                    player.anims.play('left', true);
+                }
+                else if (cursors.right.isDown) {
+                    player.setVelocityX(velocity);
+                    player.anims.play('right', true);
+                }
+                else {
+                    player.setVelocityX(0);
+                    player.anims.play('turn');
+                }
+                if (cursors.up.isDown && player.body.touching.down) {
+                    player.setVelocityY(-velocity);
+                }
+            }
+
+            //  Move from array creation scene to home scene 
+            if (!gameStarted && arrayCreated && !onHomeScreen && cursors.space.isDown) {
+                arrayCreateScreen.clear(true, true); 
+                cratesGroup.clear(true, true);
+                createHomeScreen(); 
+            }
+            
+            //  Move from home screen to game 
+            if (!gameStarted && moveFromHomeScreen && cursors.space.isDown) {
+                homeScreen.clear(true, true);
+                gameStarted = true; 
+                onHomeScreen = false; 
+                moveFromHomeScreen = false; 
+                startGame(); 
+            }
+
+            if (gameOver && cursors.space.isDown) {
+                //  Restart the game 
+                crateText.destroy(); 
+                restartText.destroy(); 
+                finalScoreText.destroy();
+
+                for (var i = 0; i < crates.length; i++) {
+                    scoreTexts[i].destroy(); 
+                    crates[i].destroy(); 
+                }
+                ground.clear(true, true); 
+                indexText.clear(true, true); 
+                player.destroy(); 
+
+                scores = [];
+                gameOver = false; 
+                gameStarted = false; 
+                arrayCreated = false; 
+                restarted = true; 
+                createArrayScreen(); 
+            }
+        }
+
+        //  Destroy the star once it hits the ground 
+        function destroyStar (ground, star) {
+            star.destroy(); 
+        }
+
+        //  When a player hits a star, update scores accordingly 
+        function collectStar (player, star) {
+            var starType = star.getData('starType');
+            var starValue = star.getData('starValue');  
+            star.destroy(); 
+            if (starType == 'star') {
+                scores[curCrate] = starValue; 
+            }
+            else if (starType == 'pink_star') {
+                scores[curCrate] += starValue;
+            }
+            else if (starType == 'green_star') {
+                scores[curCrate] *= starValue; 
+            }
+            else { //starType == 'orange_star' 
+                curCrate = (curCrate + 1) % crateNum; 
+                crateText.setText("CURRENT CRATE: " + curCrate); 
+            }
+            scoreTexts[curCrate].setText(scores[curCrate]);
+        }
+    </script>
+    {% endblock %}
+</html>
