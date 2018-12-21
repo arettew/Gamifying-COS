@@ -243,16 +243,17 @@
         }
         
         var count; 
+        var incFreq; 
         //  Create a level, spawning stars 
         function createLevel () {
             curCrate = 0; 
             crateText = scene.add.text(150, height - 150, "CURRENT INDEX: 0", {color: "black", fontSize: "30px"});
             
-            var delay = 1000; 
-            var repeat = 50; 
+            var delay = 500; 
+            var repeat = 100; 
+            incFreq = Math.floor(repeat / crateNum);
             count = 0; 
             scene.time.addEvent({ delay: delay, callback: spawnStars, callbackScope: this, repeat: repeat - 1 });
-            scene.time.addEvent({delay: delay * 5, callback: spawnIncStars, callbackScope: this, repeat: Math.floor(repeat / 5) - 1});
             scene.time.addEvent({ delay: delay * repeat + 3000, callback: endGame, callbackScope: this});
         }
 
@@ -278,6 +279,10 @@
         //  Spawn random objects 
         function spawnStars () { 
             count += 1; 
+            if (count % incFreq == 0) {
+                spawnIncStars(); 
+                return;
+            }
             for (var i = 0; i < 2; i++) {
                 //  Determine which type of star will be spawned 
                 var starTypeIndex = Phaser.Math.Between(0, 2); 
@@ -366,8 +371,12 @@
             star.destroy(); 
         }
 
+        var collectIncStar = true; 
         //  When a player hits a star, update scores accordingly 
         function collectStar (player, star) {
+            if (!collectIncStar) {
+                return;
+            }
             var starType = star.getData('starType');
             var starValue = star.getData('starValue');  
             star.destroy(); 
@@ -381,11 +390,21 @@
                 scores[curCrate] *= starValue; 
             }
             else { //starType == 'orange_star' 
-                curCrate = (curCrate + 1) % crateNum; 
-                crateText.setText("CURRENT CRATE: " + curCrate); 
+                if (collectIncStar = true) {
+                    collectIncStar = false; 
+                    curCrate = (curCrate + 1) % crateNum; 
+                    crateText.setText("CURRENT INDEX: " + curCrate); 
+                    scene.time.addEvent({ delay: 500, callback: setCollectIncStar, callbackScope: this});
+                }
             }
             scoreTexts[curCrate].setText(scores[curCrate]);
         }
+
+        //  Set collectIncStar to true (to ensure that multiple are not counted per wave)
+        function setCollectIncStar () {
+            collectIncStar = true; 
+        }
+
     </script>
     {% endblock %}
 </html>

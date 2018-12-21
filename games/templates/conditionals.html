@@ -62,14 +62,29 @@
             this.add.image(width / 2, height / 2, 'sky').setScale(3);
             scene = this;
 
-            //  Create start screen 
-            var style = {wordWrap: {width: 500}};
-            startText = this.add.text(width / 2, height / 2 - 15, "Press space to start game", {fontSize: '30px'}); 
-            startText.setX(width / 2 - startText.width / 2);
-
-            instructionsText = this.add.text(width / 2 - 250, height / 2 + 40, "Once the game starts, count the shooting stars and pick the answer corresponding to the correct number as you aim for a high score!", style);
+            createStartScreen(); 
         }
 
+        var moveFromStartScreen;
+        function createStartScreen () {
+            //  Create start screen 
+            var style = {wordWrap: {width: 500}};
+            startText = scene.add.text(width / 2, height / 2 - 15, "Press space to start game", {fontSize: '30px'}); 
+            startText.setX(width / 2 - startText.width / 2);
+
+            instructionsText = scene.add.text(width / 2 - 250, height / 2 + 40, "Once the game starts, count the shooting stars and pick the answer corresponding to the correct number as you aim for a high score!", style);
+            
+            onStartScreen = true; 
+            moveFromStartScreen = false; 
+            scene.time.addEvent({ delay: 100, callback: setMoveFromStartScreen, callbackScope: this});
+        }
+
+        function setMoveFromStartScreen () {
+            moveFromStartScreen = true; 
+        }
+
+        var duration = 750; 
+        var maxNum = 20; 
         function startGame () { 
             instructionsText.destroy(); 
             startText.destroy(); 
@@ -77,14 +92,15 @@
 
             scoreText = scene.add.text(16, 16, 'Score: 0', { fontSize: '32px'});
             objectNo = 10; 
+            duration = 750; 
+            maxNum = 20; 
+            score = 0; 
             createLevel();
         }
 
         var left; 
         var right; 
         var scoreText; 
-        var duration = 750; 
-        var maxNum = 20; 
         //  Create a level in the game, where stars fly across the screen and a user is then prompted 
         //  to give an answer 
         function createLevel () {
@@ -247,15 +263,12 @@
             starButtons.clear(true, true); 
             starTexts.clear(true, true); 
             restartText.destroy();
-            
-            score = 0; 
+            scoreText.destroy(); 
+    
             isGameOver = false; 
-            objectNo = 10; 
-            scoreText.setText('Score: ' + score);
-            duration = 750; 
-            maxNum = 20; 
 
-            createLevel(); 
+            //createLevel(); 
+            createStartScreen(); 
         }
 
         //  Create objects and move them across the screen
@@ -280,7 +293,7 @@
                 reset(); 
             }
 
-            if (onStartScreen && cursors.space.isDown) {
+            if (onStartScreen && moveFromStartScreen && cursors.space.isDown) {
                 startGame(); 
             }
         }
