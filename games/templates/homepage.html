@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+	.container1 {
+		text-align: center;
+		display: inline-block;
+		position:relative;
+	}
+	.container2 {
+		text-align: center;
+		display: inline-block;
+		position:relative;
+	}
+	.container3 {
+		text-align: center;
+		display: inline-block;
+		position:relative;
+	}
+	.box {
+		height: 250px;
+		width: 250px;
+		padding-top: 100px;
+		font-size: 24px;
+		color: #ffffff;
+		transition: .5s ease;
+  		backface-visibility: hidden;
+	}
+	.hiddentext {
+		transition: .5s ease;
+  		opacity: 0;
+  		position: absolute;
+  		top: 60%; 
+  		left: 50%;
+  		transform: translate(-50%,-50%);
+  		height: 200px;
+  		width: 200px;  	
+	}
+
+	.container1:hover .box {
+		opacity: 0.3;
+		color: transparent;
+	}
+
+	.container1:hover .hiddentext {
+		opacity: 1.0;
+	}
+	.container2:hover .box {
+		opacity: 0.3;
+		color: transparent;
+	}
+
+	.container2:hover .hiddentext {
+		opacity: 1.0;
+	}
+	.container3:hover .box {
+		opacity: 0.3;
+		color: transparent;
+	}
+
+	.container3:hover .hiddentext {
+		opacity: 1.0;
+	}
+	.butn {
+		border: none;
+		background: none;
+		padding: 0;
+		outline: inherit;
+		cursor: pointer;
+	}
+
+	
+</style>
+
+<h3 style="padding-bottom: 20px; margin-top: 50px;"> Choose a game: </h3>
+
+<button class="butn" onclick="window.location.href='/arrays'">
+	<div class="container1" > 
+		<div class="box" style="background-color: #3C91E6;">
+			Arrays
+		</div>
+		<div class="hiddentext">
+			<b>[Brief description]</b>
+		</div>
+	</div>
+</button>
+
+<button class="butn" onclick="window.location.href='/conditionals'">
+	<div class="container2" > 
+		<div class="box" style="background-color: #A2D729;">
+			Conditionals
+		</div>
+		<div class="hiddentext">
+			<b>[Brief description]</b>
+		</div>
+	</div>
+</button>
+
+<button class="butn" onclick="window.location.href='/level1'">
+	<div class="container3" > 
+		<div class="box" style="background-color: #FA824C;">
+			Loops
+		</div>
+		<div class="hiddentext">
+			<b>Get familiarized with single and doubly-nested for-loops by traversing treasure maps to find treasure!</b>
+		</div>
+	</div>
+</button>
+
+{% endblock %}

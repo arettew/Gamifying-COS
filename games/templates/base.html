@@ -1,13 +1,63 @@
 <html>
     <head>
-        <style type="text/css">
-            canvas {
-                height: 500px; 
-                width: 500px;
-            }
-        </style>
+        <title>COS 126 Games</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
+        <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.3/js/materialize.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script>
     </head>
-    Hello world! This is a base template that can be extended!
-    {% block content %}
-    {% endblock %}
+
+    <style> 
+        .input-color {
+            position: relative;
+        }
+        .input-color input {
+            padding-left: 20px;
+        }
+        .input-color .color-box {
+            width: 10px;
+            height: 10px;
+            display: inline-block;
+            background-color: #ccc;
+            position: absolute;
+            left: 5px;
+            top: 5px;
+        }
+    </style>
+
+     <body>
+        <nav class="navbar text navbar-expand-sm" style="background-color: #3C91E6; font-family: 'Courier New'">
+            <!-- left side of navbar -->
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item text">
+                    <a class="nav-link" style="color: #ffffff; font-size: 16px;">Gamifying COS 126 Concepts</a>
+                </li>
+
+            </ul>
+
+            <!-- right side of navbar -->
+            <ul class="navbar-nav ml-auto" style="margin-right: 9%;">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbardrop" data-toggle="dropdown" style="color: #ffffff">
+                        Available Games
+                     </a>
+                    <div class="dropdown-menu">
+                        <a class="dropdown-item" href="#">Arrays</a>
+                        <a class="dropdown-item" href="#">Conditionals</a>
+                        <a class="dropdown-item" href="#">Loops</a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+        <div class="container text" style="padding-top: 2%; text-align: center; align-content: center; font-family: 'Courier New'">
+        {% block content %}
+        {% endblock %}
+        </div>
+    </body>
 </html>
