@@ -12,3 +12,6 @@ class ArraysView(TemplateView):
 
 class ConditionalsView(TemplateView): 
     template_name = "conditionals.html"
+
+class LoopsViewOne(TemplateView):
+    template_name = "level1.html"

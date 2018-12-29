@@ -1,0 +1,805 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+{% load static %}
+
+<head>
+	<script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+
+        .sidenav {
+   			height: 640px; /* Full-height: remove this if you want "auto" height */
+    		width: 300px; /* Set the width of the sidebar */
+    		z-index: 1; /* Stay on top */
+    		top: 0; /* Stay at the top */
+    		background-color: #A2D729; /* Black */
+    		overflow-x: hidden; /* Disable horizontal scroll */
+    		float: left;
+    		text-align: left;
+		}
+
+		.game-right {
+			margin-left: 300px;
+		}
+
+		.container1 {
+    		width: 1130px;
+    		height: 800px;
+		}
+
+    </style>
+</head>
+
+<section class="container1">
+	<div id="sidebar" class="sidenav" style="padding-top: 30px;">
+		<h3 style="font-family: 'Source Code Pro', monospace; color: #000000; margin-left: 20px; font-size: 20px;"><b>CONSOLE</b></h3> 
+		<h3 style="font-family: 'Source Code Pro', monospace; color: #000000; margin-left: 20px; margin-right: 20px;font-size: 14px;">Instructions: <br> Traverse the treasure map to get your character to the 'X'! <br><br> - Click on the '+' button to view available code blocks. <br> - Drag the correct loop block to the empty square in the blue pane. <br> - Adjust the sliders to tweak the start and end indices in your loop while looking at the code generated in the green pane. <br> - Press play when your solution is ready!</h3>
+		<h3 id="code-block" style="font-family: 'Source Code Pro', monospace; color: #000000; margin-left: 20px; margin-right: 10px; font-size: 14px;"></h3>
+		<h3 id="answer-block" style="font-family: 'Source Code Pro', monospace; color: #000000; margin-left: 20px; margin-right: 10px; font-size: 14px;"></h3>
+		<div align="center">
+			<button class="btn" id="retry" style="background-color: #A2D729; border-color: #000000; color: #000000; font-family: 'Source Code Pro', monospace; display:none;" onclick="reload(0)">retry</button>
+		</div>
+		<div align="center">
+			<button class="btn" id="playAgain" style="background-color: #A2D729; border-color: #000000; color: #000000; font-family: 'Source Code Pro', monospace; display:none;" onclick="reload(score)">play again</button>
+			<button class="btn" id="level2" onclick="location.href='level2';" style="background-color: #A2D729; border-color: #000000; color: #000000; font-family: 'Source Code Pro', monospace; display:none;">level 2</button>
+		</div>
+	</div>
+
+	<div class="game-right" id="container" style="width:800px; height:530px; z-index: 2; padding-top: 30px;"><div id="phaser-game"></div></div>
+
+	<div class="game-right" id="bottom-strip" style="height: 80px; width: 800px; background-color: #3C91E6; z-index: -1; margin-top: 30px;">
+		<div id="slider1" style="width:100px; background-color: #3C91E6; margin-bottom: 10px;"></div>
+		<div id="slider2" style="width:100px; background-color: #3C91E6;"></div>
+	</div>
+	</section>
+	
+
+<script type="text/javascript">
+
+	var config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 530,
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 300 },
+                debug: false
+            }
+        },
+        backgroundColor: 'FAFFFD',
+        parent: 'phaser-game',
+        scene: {
+        	preload: preload,
+            create: create,
+            update: update
+        }
+    };
+
+    var game = new Phaser.Game(config);
+    var sprite;
+    var popup;
+    var loop;
+    var reverse_loop;
+    var cancel;
+    var add_button;
+    var startblock;
+    var play;
+    var incorrect_answer;
+    var correct_answer;
+    var del_button;
+    var refresh;
+    var start_index;
+    var end_index;
+    var score;
+    var scoreText;
+    var blueboxes;
+    var redboxes;
+    var incr_loop;
+    var decr_loop;
+
+    function preload() {
+    	var exec_pane = this.add.graphics(0, 0);
+    	exec_pane.fillStyle(0x3C91E6, 1.0);
+    	exec_pane.lineStyle(5, 0x02648e, 1.0);
+
+    	exec_pane.fillRect(0, 350, 800, 250);
+
+    	exec_pane.beginPath();
+		exec_pane.moveTo(0, 350);
+		exec_pane.lineTo(800, 350);
+		exec_pane.closePath();
+		exec_pane.strokePath();
+
+		// add "treasure map"
+		var treasure = this.add.graphics(0, 0);
+		var width = 700;
+		var height = 100;
+		treasure.lineStyle(5, 0x76430a, 0.5);
+		treasure.beginPath();
+		treasure.moveTo(50, height + 125);
+		treasure.lineTo(width + 50, height + 125);
+		treasure.moveTo(50, height + 25);
+		treasure.lineTo(width + 50, height + 25);
+
+		// draw grid lines
+		for (var i = 0; i <= width; i += 100) {
+			treasure.moveTo(i + 50, height + 125);
+			treasure.lineTo(i + 50, height + 25);
+		}
+
+		// add numbering to boxes
+		for (var i = 0; i < 7; i++) {
+			this.add.text(50 + i*100 + 45, 98, String(i), {
+				fill: "#76430a",
+			});
+		}
+
+		// draw X in random position
+		end_index = Math.floor(Math.random()*6 + 1);
+		treasure.moveTo((end_index) * 100 + 70, 150);
+		treasure.lineTo((end_index) * 100 + 130, 200);
+		treasure.moveTo((end_index) * 100 + 130, 150);
+		treasure.lineTo((end_index) * 100 + 70, 200);
+
+		treasure.strokePath();
+		treasure.closePath();
+
+		// add popup box
+		popup = this.add.graphics(0, 0);
+    	popup.fillStyle(0x3C91E6, 1.0);
+    	popup.lineStyle(5, 0x02648e, 1.0);
+
+    	popup.fillRect(500, 130, 280, 200);
+
+    	popup.beginPath();
+		popup.moveTo(500, 130);
+		popup.lineTo(780, 130);
+		popup.moveTo(780, 130);
+		popup.lineTo(780, 330);
+		popup.moveTo(780, 330);
+		popup.lineTo(500, 330);
+		popup.moveTo(500, 330);
+		popup.lineTo(500, 130);
+		popup.closePath();
+		popup.strokePath();
+		popup.depth = 100;
+		popup.visible = false;
+
+		// add start block
+		startblock = this.add.graphics(0, 0);
+		startblock.fillStyle(0x02648e, 1.0);
+		startblock.lineStyle(5, 0x02648e, 1.0);
+		startblock.fillRect(50, 420, 100, 100);
+		startblock.moveTo(50, 420);
+		startblock.lineTo(250, 420);
+		startblock.moveTo(250, 420);
+		startblock.lineTo(250, 520);
+		startblock.moveTo(250, 520);
+		startblock.lineTo(50, 520);
+		startblock.closePath();
+		startblock.strokePath();
+
+		// initialize correct and incorrect answer blocks
+		incorrect_answer = this.add.graphics(0, 0);
+		incorrect_answer.fillStyle(0xFF0000, 0.3);
+		incorrect_answer.fillRect(50, 125, 100, 100);
+		incorrect_answer.visible = false;
+
+		correct_answer = this.add.graphics(0, 0);
+		correct_answer.fillStyle(0xA2D729, 0.8);
+		correct_answer.fillRect(50, 125, 100, 100);
+		correct_answer.visible = false;
+
+		// initialize correct and incorrect traversal blocks
+		blueboxes = []
+		for (var i = 0; i < 7; i++) {
+			var box = this.add.graphics(0, 0);
+			box.fillStyle(0x3C91E6, 0.8);
+			box.fillRect(50 + (i*100), 125, 100, 100);
+			box.visible = false;
+			blueboxes.push(box);
+		}
+
+		redboxes = []
+		for (var i = 0; i < 7; i++) {
+			var box = this.add.graphics(0, 0);
+			box.fillStyle(0xFF0000, 0.3);
+			box.fillRect(50 + (i*100), 125, 100, 100);
+			box.visible = false;
+			redboxes.push(box);
+
+			var sand = this.add.graphics(0, 0);
+			sand.fillStyle(0xe7cf98, 0.5);
+			sand.fillRect(50 + (i*100), 125, 100, 100)
+		}
+
+		// add text
+		start_index = end_index - 1;
+		while (Math.abs(start_index - (end_index)) < 3)
+			start_index = Math.floor(Math.random()*6);
+		var header = this.add.text(220, 55, "Start at the red line and end at the X!", {
+			fill: "#000",
+		});
+		var text = this.add.text(75, 459, "start");
+		incr_loop = this.add.text(545, 270, "incrementing", {
+			font: '12px Courier'
+		});
+		incr_loop.depth = 101;
+		decr_loop = this.add.text(650, 270, "decrementing", {
+			font: '12px Courier'
+		});
+		decr_loop.depth = 101;
+		
+
+		// draw line under starting block
+		var startline = this.add.graphics(0, 0);
+		startline.lineStyle(5, 0xff0000, 1.0);
+		startline.moveTo((start_index * 100) + 50, 225);
+		startline.lineTo((start_index * 100) + 150, 225);
+		startline.closePath();
+		startline.strokePath();
+
+		// initialize score
+		if (window.sessionStorage.getItem("score"))
+			score = window.sessionStorage.getItem("score")
+		else score = 0;
+		scoreText = this.add.text(25, 20, "Score: " + String(score), {
+			fill: "#000",
+		});
+
+		// preload images
+        this.load.image('add_button', '{% static "assets/add_button.png" %}');
+        this.load.image('loop', '{% static "assets/loop.png" %}');
+        this.load.image('reverse_loop', '{% static "assets/reverse_loop.png" %}');
+        this.load.image('cancel', '{% static "assets/cancel.png" %}');
+        this.load.image('sprite', '{% static "assets/star.png" %}');
+        this.load.image('play', '{% static "assets/play.png" %}');
+        this.load.image('del_button', '{% static "assets/delete.png" %}');
+        this.load.image('refresh', '{% static "assets/refresh.png" %}');
+		
+    }
+
+    function create() {
+
+    	// add images
+		add_button = this.add.image(750, 380, 'add_button').setInteractive();
+		del_button = this.add.image(710, 380, 'del_button').setInteractive();
+		refresh = this.add.image(670, 380, 'refresh').setInteractive();
+		loop = this.add.image(590, 230, 'loop').setInteractive();
+		reverse_loop = this.add.image(690, 230, 'reverse_loop').setInteractive();
+		play = this.add.image(310, 470, 'play').setInteractive();
+		cancel = this.add.image(755, 150, 'cancel').setInteractive();
+
+		// set scales
+		loop.scaleX = 0.06;
+		loop.scaleY = 0.06;
+		loop.depth = 101;
+		loop.visible = false;
+		reverse_loop.scaleX = 0.06;
+		reverse_loop.scaleY = 0.06;
+		reverse_loop.depth = 101;
+		reverse_loop.visible = false;
+		add_button.scaleX = 0.05;
+		add_button.scaleY = 0.05;
+		del_button.scaleX = 0.05;
+		del_button.scaleY = 0.05;
+		refresh.scaleX = 0.06;
+		refresh.scaleY = 0.06;
+		play.scaleX = 0.08;
+		play.scaleY = 0.08;
+		play.visible = false;
+		cancel.scaleX = 0.1;
+		cancel.scaleY = 0.1;
+		cancel.depth = 101;
+		cancel.visible = false;
+
+		sprite = this.add.sprite(100, 275, 'sprite');
+
+		// on pointerdown of the add button, pull up popup box and code blocks
+		add_button.on('pointerdown', () => {
+			 add_button.scaleX = 0.03;
+			 add_button.scaleY = 0.03;
+			 add_button.input.enabled = false;
+			 document.body.style.cursor = 'pointer';
+
+			popup.visible = true;
+			loop.visible = true;
+			reverse_loop.visible = true;
+			cancel.visible = true;
+
+			// loop block events
+			var down = false;
+			this.input.setDraggable(loop);
+			this.input.setDraggable(reverse_loop);
+
+			this.input.on('drag', function (pointer, gameObject, dragX, dragY) {
+        		gameObject.x = dragX;
+        		gameObject.y = dragY;
+    		});
+
+			loop.on('pointerover', () => {
+				document.body.style.cursor = 'pointer';
+			});
+
+			loop.on('pointerout', () => {
+				if (!down) {
+					document.body.style.cursor = 'default';
+					loop.scaleX = 0.06;
+					loop.scaleY = 0.06;
+				}
+			});
+
+			loop.on('pointerup', () => {
+				loop.scaleX = 0.06;
+				loop.scaleY = 0.06;
+				down = false;
+				if (isInBox(loop)) {
+					loop.x = 200;
+    				loop.y = 470;
+				}
+
+				if (isOverDelete(loop)) {
+					loop.x = 590;
+					loop.y = 230;
+					loop.visible = false;
+					add_button.input.enabled = true;
+				}
+			});
+
+			loop.on('pointerdown', () => {
+				document.body.style.cursor = 'pointer';
+				loop.scaleX = 0.04;
+				loop.scaleY = 0.04;
+				down = true;
+			});
+
+			reverse_loop.on('pointerover', () => {
+				document.body.style.cursor = 'pointer';
+			});
+
+			reverse_loop.on('pointerout', () => {
+				if (!down) {
+					document.body.style.cursor = 'default';
+					reverse_loop.scaleX = 0.06;
+					reverse_loop.scaleY = 0.06;
+				}
+			});
+
+			reverse_loop.on('pointerup', () => {
+				reverse_loop.scaleX = 0.06;
+				reverse_loop.scaleY = 0.06;
+				down = false;
+
+				if (isInBox(reverse_loop)) {
+					reverse_loop.x = 200;
+    				reverse_loop.y = 470;
+				}
+
+				else if (isOverDelete(reverse_loop)) {
+					reverse_loop.x = 690;
+					reverse_loop.y = 230;
+					reverse_loop.visible = false;
+					add_button.input.enabled = true;
+				}
+			});
+
+			reverse_loop.on('pointerdown', () => {
+				document.body.style.cursor = 'pointer';
+				reverse_loop.scaleX = 0.04;
+				reverse_loop.scaleY = 0.04;
+				down = true;
+			});
+
+			// minimize button events
+			cancel.on('pointerover', () => {
+				document.body.style.cursor = 'pointer';
+			});
+
+			cancel.on('pointerdown', () => {
+				document.body.style.cursor = 'pointer';
+				cancel.scaleX = 0.08;
+				cancel.scaleY = 0.08;
+				popup.visible = false;
+				cancel.visible = false;
+				if (isInPopup(loop)) {
+					loop.visible = false;
+				}
+
+				if (isInPopup(reverse_loop)) {
+					reverse_loop.visible = false;
+				}
+				add_button.input.enabled = true;
+			});
+
+			cancel.on('pointerout', () => {
+				document.body.style.cursor = 'default';
+			});
+
+			// play button events
+			play.on('pointerover', () => {
+				document.body.style.cursor = 'pointer';
+			});
+
+			play.on('pointerout', () => {
+				document.body.style.cursor = 'default';
+				play.scaleX = 0.08;
+				play.scaleY = 0.08;
+			});
+
+			play.on('pointerdown', () => {
+				play.scaleX = 0.06;
+				play.scaleY = 0.06;
+
+				for (var i = 0; i < blueboxes.length; i++) {
+					blueboxes[i].visible = false;
+					redboxes[i].visible = false;
+				}
+
+				sprite.visible = false;
+
+				if (isInBox(loop)) runForwardCode();
+				else runBackwardCode();
+			});
+
+			play.on('pointerup', () => {
+				play.scaleX = 0.08;
+				play.scaleY = 0.08;
+			});
+		});
+
+		add_button.on('pointerover', () => {
+			 document.body.style.cursor = 'pointer';
+		});
+
+		add_button.on('pointerout', () => {
+			 document.body.style.cursor = 'default';
+			 add_button.scaleX = 0.05;
+			 add_button.scaleY = 0.05;
+		});
+
+		add_button.on('pointerup', () => {
+			add_button.scaleX = 0.05;
+			add_button.scaleY = 0.05;
+			document.body.style.cursor = 'default';
+		});
+
+		// refresh button events
+		refresh.on('pointerover', () => {
+			 document.body.style.cursor = 'pointer';
+		});
+
+		refresh.on('pointerout', () => {
+			 document.body.style.cursor = 'default';
+			 refresh.scaleX = 0.06;
+			 refresh.scaleY = 0.06;
+		});
+
+		refresh.on('pointerdown', () => {
+				document.body.style.cursor = 'pointer';
+				refresh.scaleX = 0.05;
+				refresh.scaleY = 0.05;
+				reload(score);
+		});
+
+		refresh.on('pointerup', () => {
+			refresh.scaleX = 0.06;
+			refresh.scaleY = 0.06;
+			document.body.style.cursor = 'default';
+		});
+    }
+
+    // check if the given object is in the popup box
+    function isInPopup(block) {
+    	if ((block.x >= 500 && block.x < 720) && (block.y >= 130 && block.y < 300)) {
+    		return true;
+    	}
+    	return false;
+    }
+
+     // check if the given object is in the execution block
+    function isInBox(block) {
+    	if (block.x >= 180 && block.x <= 215 && block.y >= 420 && block.y <= 480)
+    		return true;
+    	return false;
+    }
+
+    // 710, 380
+    function isOverDelete(block) {
+    	if ((block.x >= 706 && block.x <= 716) && (block.y >= 374 && block.y <= 386)) {
+    		return true;
+    	}
+    	return false;
+    }
+
+
+    function update() {
+    	var answerblock = document.getElementById("answer-block");
+    	
+    	// if the loop block is contained inside the empty square
+    	if (isInBox(loop)) {
+
+    		if (start_index > end_index) {
+    			answerblock.innerHTML = "<br /> <b> WARNING: </b> You chose an incrementing loop, but you need a decrementing loop to get to the treasure. Drag the loop above the '-' button and press '+' to choose the right loop. "
+    			return;
+    		}
+
+    		answerblock.innerHTML = "";
+
+    		var div1 = document.getElementById("slider1");
+    		var div2 = document.getElementById("slider2");
+
+    		if (div1.childNodes.length == 0) {
+    			var slider1 = document.createElement("input");
+    			slider1.setAttribute("id", "start_slider");
+    			slider1.setAttribute("type", "range");
+    			slider1.setAttribute("min", 0);
+    			slider1.setAttribute("max", 6);
+    			slider1.style.marginLeft = "135px";
+
+    			var slider2 = document.createElement("input");
+    			slider2.setAttribute("id", "end_slider");
+    			slider2.setAttribute("type", "range");
+    			slider2.setAttribute("min", 0);
+    			slider2.setAttribute("max", 7);
+    			slider2.style.marginLeft = "135px";
+
+    			div1.appendChild(slider1);
+    			div2.appendChild(slider2);
+    		}	
+
+    		else {
+    			var slider1 = document.getElementById("start_slider");
+    			var slider2 = document.getElementById("end_slider");
+    			slider1.onchange = function() {
+    				play.visible = true;
+    			};
+    			slider2.onchange = function() {
+    				play.visible = true;
+    			};
+
+    			var codeblock = document.getElementById("code-block");
+    			var start = slider1.value;
+    			var end = slider2.value;
+    			codeblock.innerHTML = "<br /><b>Your code: </b><br /><br />";
+    			codeblock.innerHTML += "boolean[] arr = new boolean[7];<br />";
+    			codeblock.innerHTML += "for (int i = " + "<span style=\"color:#A30005\"><b>" + String(start) + "</b></span>" + "; i < " + "<span style=\"color:#A30005\"><b>" + String(end) + "</b></span>" + "; i++) {<br />";
+    			codeblock.innerHTML += "&nbsp &nbsp arr[i] = true; <br />}<br />";
+    		}
+    	}
+
+    	// if the loop block is outside the popup pane but not in the empty square
+    	else if (!isInPopup(loop)) {
+    		popup.visible = false;
+    		cancel.visible = false;
+    		reverse_loop.visible = false;
+    	}
+
+    	else if (!isInPopup(reverse_loop)) {
+    		popup.visible = false;
+    		cancel.visible = false;
+    		loop.visible = false;
+    	}
+
+
+    	// if the loop block is in neither of the two squares
+    	else {
+    		var div1 = document.getElementById("slider1");
+    		var div2 = document.getElementById("slider2");
+    		if (div1.childNodes.length == 1) {
+    			div1.removeChild(div1.childNodes[0]);
+    			div2.removeChild(div2.childNodes[0]);
+    		}
+    		play.visible = false;
+    	}
+
+    	// same checks for reverse loop
+    	if (isInBox(reverse_loop)) {
+    		if (start_index < end_index) {
+    			answerblock.innerHTML = "<br /> <b> WARNING: </b> You chose an decrementing loop, but you need a incrementing loop to get to the treasure. Drag the loop above the '-' button and press '+' to choose the right loop. "
+    			return;
+    		}
+
+    		answerblock.innerHTML = "";
+
+    		var div1 = document.getElementById("slider1");
+    		var div2 = document.getElementById("slider2");
+
+    		if (div1.childNodes.length == 0) {
+    			var slider1 = document.createElement("input");
+    			slider1.setAttribute("id", "start_slider");
+    			slider1.setAttribute("type", "range");
+    			slider1.setAttribute("min", 0);
+    			slider1.setAttribute("max", 6);
+    			slider1.style.marginLeft = "135px";
+
+    			var slider2 = document.createElement("input");
+    			slider2.setAttribute("id", "end_slider");
+    			slider2.setAttribute("type", "range");
+    			slider2.setAttribute("min", 0);
+    			slider2.setAttribute("max", 6);
+    			slider2.style.marginLeft = "135px";
+
+    			div1.appendChild(slider1);
+    			div2.appendChild(slider2);
+    		}	
+
+    		else {
+    			var slider1 = document.getElementById("start_slider");
+    			var slider2 = document.getElementById("end_slider");
+    			slider1.onchange = function() {
+    				play.visible = true;
+    			};
+    			slider2.onchange = function() {
+    				play.visible = true;
+    			};
+
+    			var codeblock = document.getElementById("code-block");
+    			var start = slider1.value;
+    			var end = slider2.value;
+    			codeblock.innerHTML = "<br /><b>Your code: </b><br /><br />";
+    			codeblock.innerHTML += "boolean[] arr = new boolean[7];<br />";
+    			codeblock.innerHTML += "for (int i = " + "<span style=\"color:#A30005\"><b>" + String(start) + "</b></span>" + "; i >= " + "<span style=\"color:#A30005\"><b>" + String(end) + "</b></span>" + "; i--) {<br />";
+    			codeblock.innerHTML += "&nbsp &nbsp arr[i] = true; <br />}<br />";
+    		}
+    	}
+    }
+
+    // when play button is pressed, move the sprite
+    function runForwardCode() {
+    	var start = parseInt(document.getElementById("start_slider").value);
+    	var end = parseInt(document.getElementById("end_slider").value) - 1;
+    	var answerblock = document.getElementById("answer-block");
+    	var alpha = 0.4;
+    	// CASE 1: incorrect start
+    	if (start != start_index) {
+    		sprite.visible = true;
+    		sprite.x = (start + 1) * 100;
+    		sprite.y = 175;
+
+    		redboxes[start].visible = true;
+
+    		answerblock.innerHTML = "<br /><b>Incorrect starting index!  <br />Adjust the sliders to try again! </b><br /><br />";
+    		return;
+    	}
+
+    	// CASE 2: correct start 
+    	for (var i = start; i <= end; i++) {
+  			(function(i) {
+    			window.setTimeout(function() {
+    				sprite.visible = true;
+      				sprite.x = (i + 1) * 100;
+      				sprite.y = 175;
+
+      				// check for correct traversal
+      				if (i >= start_index && i <= end_index) {
+      					blueboxes[i].alpha = alpha;
+      					blueboxes[i].visible = true;
+      				}
+
+      				else {
+      					redboxes[i].visible = true;
+      				}
+      				
+      				if (i == end) {
+      					// CASE 3: incorrect end
+      					if (i != end_index) {
+      						redboxes[i].visible = true;
+    						answerblock.innerHTML = "<br /><b>Incorrect ending index!  <br />Adjust the sliders to try again!</b><br /><br />";
+    						return;
+      					}
+
+      					// CASE 4: correct end
+      					else {
+      						correct_answer.x = ((end + 1) * 100) - 100;
+    						correct_answer.y = 0;
+    						correct_answer.visible = true;
+    						blueboxes[i].visible = false;
+    						redboxes[i].visible = false;
+    						updateScore(50);
+    						answerblock.innerHTML = "<br /><b>Great job!  <br />Keep playing or go to level 2!</b><br /><br />";
+    						document.getElementById('level2').style.display = 'inline';
+    						document.getElementById('playAgain').style.display = 'inline';
+      					}
+      				}
+      				alpha += 0.2;
+
+    			}, i * 500);
+  			}(i));
+		}
+    }
+
+    function runBackwardCode() {
+    	var start = parseInt(document.getElementById("start_slider").value);
+    	var end = parseInt(document.getElementById("end_slider").value);
+    	var answerblock = document.getElementById("answer-block");
+    	var alpha = 0.4;
+
+    	// CASE 1: incorrect start
+    	if (start != start_index) {
+    		sprite.visible = true;
+    		sprite.x = (start + 1) * 100;
+    		sprite.y = 175;
+
+    		redboxes[start].visible = true;
+
+    		answerblock.innerHTML = "<br /><b>Incorrect starting index!  <br />Adjust the sliders to try again! </b><br /><br />";
+    		return;
+    	}
+
+    	var vals = [];
+    	for (var i = start; i >= end; i--) {
+    		vals.push(i);
+    	}
+
+    	// CASE 2: correct start 
+    	for (var i = 0; i <= (start - end); i++) {
+  			(function(i) {
+    			window.setTimeout(function() {
+    				var index = vals[i];
+    				sprite.visible = true;
+      				sprite.x = index * 100 + 100;
+      				sprite.y = 175;
+
+      				// check for correct traversal
+      				if (index <= start_index && index > end_index) {
+      					blueboxes[index].alpha = alpha;
+      					blueboxes[index].visible = true;
+      				}
+
+      				else {
+      					redboxes[index].visible = true;
+      				}
+
+      				if (index == end) {
+      					// CASE 3: incorrect end
+      					if (index != end_index) {
+    						redboxes[index].visible = true;
+    						answerblock.innerHTML = "<br /><b>Incorrect ending index!  <br />Adjust the sliders to try again!</b><br /><br />";
+    						return;
+      					}
+
+      					// CASE 4: correct end
+      					else {
+      						correct_answer.x = ((end + 1) * 100) - 100;
+    						correct_answer.y = 0;
+    						correct_answer.visible = true;
+    						blueboxes[index].visible = false;
+    						redboxes[index].visible = false;
+    						updateScore(50);
+    						answerblock.innerHTML = "<br /><b>Great job!  <br />Keep playing or go to level 2!</b><br /><br />";
+    						document.getElementById('level2').style.display = 'inline';
+    						document.getElementById('playAgain').style.display = 'inline';
+      					}
+      				}
+      				alpha += 0.2;
+
+    			}, i * 500);
+  			}(i));
+		}
+    }
+
+    function updateScore(val) {
+    	scoreText.setText("Score: " + String(parseInt(score) + val));
+    	score = parseInt(score) + val;
+    	return;
+    }
+
+    // refresh the game
+    // @params points - the score that should be there when the game resets
+    function reload(points) {
+    	window.sessionStorage.setItem("score", score);
+    	console.log(window.sessionStorage);
+    	location.reload();
+    	var currScore = window.sessionStorage.getItem("score");
+    	console.log(currScore);
+    	scoreText.setText("Score: " + String(currScore));
+    }
+
+</script>
+
+{% endblock %}
