@@ -27,5 +27,6 @@ urlpatterns = [
     url(r'^$', views.HomeView.as_view(), name='home'),
     url(r'^arrays/$', views.ArraysView.as_view(), name='arrays'),
     url(r'^conditionals/$', views.ConditionalsView.as_view(), name='conditionals'),
-    url(r'^level1/$', views.LoopsViewOne.as_view(), name="level1")
+    url(r'^level1/$', views.LoopsViewOne.as_view(), name="level1"),
+    url(r'^level2/$', views.LoopsViewTwo.as_view(), name='level2')
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

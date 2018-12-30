@@ -15,3 +15,6 @@ class ConditionalsView(TemplateView):
 
 class LoopsViewOne(TemplateView):
     template_name = "level1.html"
+
+class LoopsViewTwo(TemplateView):
+    template_name = "level2.html"
