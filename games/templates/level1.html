@@ -438,6 +438,8 @@
 					redboxes[i].visible = false;
 				}
 
+				correct_answer.visible = false;
+
 				sprite.visible = false;
 
 				if (isInBox(loop)) runForwardCode();
@@ -649,6 +651,13 @@
     	var end = parseInt(document.getElementById("end_slider").value) - 1;
     	var answerblock = document.getElementById("answer-block");
     	var alpha = 0.4;
+
+    	// check if indices are valid
+    	if (start >= end) {
+    		answerblock.innerHTML = "<br /><b>Check whether your indices are valid.  <br />Adjust the sliders to try again! </b><br /><br />";
+    		return;
+    	}
+
     	// CASE 1: incorrect start
     	if (start != start_index) {
     		sprite.visible = true;
@@ -712,6 +721,12 @@
     	var end = parseInt(document.getElementById("end_slider").value);
     	var answerblock = document.getElementById("answer-block");
     	var alpha = 0.4;
+
+    	// check if indices are valid
+    	if (start < end) {
+    		answerblock.innerHTML = "<br /><b>Check whether your indices are valid.  <br />Adjust the sliders to try again! </b><br /><br />";
+    		return;
+    	}
 
     	// CASE 1: incorrect start
     	if (start != start_index) {
