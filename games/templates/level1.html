@@ -1,11 +1,8 @@
 
-{% extends "base.html" %}
+{% extends "basegame.html" %}
 
 {% block content %}
-{% load static %}
 
-<head>
-	<script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
     <style type="text/css">
         body {
             margin: 0;
@@ -32,7 +29,6 @@
 		}
 
     </style>
-</head>
 
 <section class="container1">
 	<div id="sidebar" class="sidenav" style="padding-top: 30px;">
@@ -253,14 +249,14 @@
 		});
 
 		// preload images
-        this.load.image('add_button', '{% static "assets/add_button.png" %}');
-        this.load.image('loop', '{% static "assets/loop.png" %}');
-        this.load.image('reverse_loop', '{% static "assets/reverse_loop.png" %}');
-        this.load.image('cancel', '{% static "assets/cancel.png" %}');
-        this.load.image('sprite', '{% static "assets/star.png" %}');
-        this.load.image('play', '{% static "assets/play.png" %}');
-        this.load.image('del_button', '{% static "assets/delete.png" %}');
-        this.load.image('refresh', '{% static "assets/refresh.png" %}');
+        this.load.image('add_button', 'static/assets/add_button.png');
+        this.load.image('loop', 'static/assets/loop.png');
+        this.load.image('reverse_loop', 'static/assets/reverse_loop.png');
+        this.load.image('cancel', 'static/assets/cancel.png');
+        this.load.image('sprite', 'static/assets/star.png');
+        this.load.image('play', 'static/assets/play.png');
+        this.load.image('del_button', 'static/assets/delete.png');
+        this.load.image('refresh', 'static/assets/refresh.png');
 		
     }
 
@@ -347,6 +343,7 @@
 					loop.x = 590;
 					loop.y = 230;
 					loop.visible = false;
+					document.getElementById("answer-block").innerHTML = "";
 					add_button.input.enabled = true;
 				}
 			});
@@ -385,6 +382,7 @@
 					reverse_loop.y = 230;
 					reverse_loop.visible = false;
 					add_button.input.enabled = true;
+					document.getElementById("answer-block").innerHTML = "";
 				}
 			});
 
@@ -519,7 +517,7 @@
 
     function update() {
     	var answerblock = document.getElementById("answer-block");
-    	
+
     	// if the loop block is contained inside the empty square
     	if (isInBox(loop)) {
 
@@ -527,8 +525,6 @@
     			answerblock.innerHTML = "<br /> <b> WARNING: </b> You chose an incrementing loop, but you need a decrementing loop to get to the treasure. Drag the loop above the '-' button and press '+' to choose the right loop. "
     			return;
     		}
-
-    		answerblock.innerHTML = "";
 
     		var div1 = document.getElementById("slider1");
     		var div2 = document.getElementById("slider2");
@@ -603,8 +599,6 @@
     			answerblock.innerHTML = "<br /> <b> WARNING: </b> You chose an decrementing loop, but you need a incrementing loop to get to the treasure. Drag the loop above the '-' button and press '+' to choose the right loop. "
     			return;
     		}
-
-    		answerblock.innerHTML = "";
 
     		var div1 = document.getElementById("slider1");
     		var div2 = document.getElementById("slider2");
