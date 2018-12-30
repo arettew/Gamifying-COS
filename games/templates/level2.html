@@ -1,0 +1,1055 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+
+        .sidenav {
+   			height: 640px; /* Full-height: remove this if you want "auto" height */
+    		width: 350px; /* Set the width of the sidebar */
+    		z-index: 1; /* Stay on top */
+    		top: 0; /* Stay at the top */
+    		background-color: #A2D729; /* Black */
+    		overflow-x: hidden; /* Disable horizontal scroll */
+    		float: left;
+    		text-align: left;
+		}
+
+		.game-right {
+			margin-left: 350px;
+		}
+
+		.container1 {
+    		width: 1200px;
+    		height: 800px;
+		}
+
+    </style>
+
+<section class="container1">
+	<div id="sidebar" class="sidenav">
+		<h3 style="font-family: 'Source Code Pro', monospace; color: #000000; margin-left: 20px; font-size: 20px;"><b><br>CONSOLE</b></h3> 
+		<h3 style="font-family: 'Source Code Pro', monospace; color: #000000; margin-left: 20px; margin-right: 20px;font-size: 14px;">Instructions: <br> The treasure map has expanded! You need to use nested loops to traverse the grid, starting at the red line and ending at the 'X'. You must traverse all blocks inside the blue box. <br><br> - Create a nested loop by dragging one loop block into the execution pane, and then drag another loop block on top of that. <br> - The left set of sliders is for the outer loop, and the right set is for the inner loop. <br> - The outer loop corresponds to the rows, and the inner loop to the columns </h3>
+		<h3 id="code-block" style="font-family: 'Source Code Pro', monospace; color: #000000; margin-left: 20px; margin-right: 10px; font-size: 14px;"></h3>
+		<h3 id="answer-block" style="font-family: 'Source Code Pro', monospace; color: #000000; margin-left: 20px; margin-right: 10px; font-size: 14px;"></h3>
+		<div align="center">
+			<button class="btn" id="retry" style="background-color: #A2D729; border-color: #000000; color: #000000; font-family: 'Source Code Pro', monospace; display:none;" onclick="reload(0)">retry</button>
+		</div>
+		<div align="center">
+			<button class="btn" id="playAgain" style="background-color: #A2D729; border-color: #000000; color: #000000; font-family: 'Source Code Pro', monospace; display:none;" onclick="reload(score)">play again</button>
+			<button class="btn" id="level2" href="/level2" style="background-color: #A2D729; border-color: #000000; color: #000000; font-family: 'Source Code Pro', monospace; display:none;">level 2</button>
+		</div>
+	</div>
+	<div class="game-right" id="container" style="width:800px; height:530px; z-index: 2; padding-top: 30px;"><div id="phaser-game"></div></div>
+	<div class="game-right" id="bottom-strip" style="height: 80px; width: 800px; background-color: #3C91E6; z-index: -1;  margin-top: 30px;">
+		<div id="slider1" style="width:100px; background-color: #3C91E6;"></div>
+		<div id="slider2" style="width:100px; background-color: #3C91E6;"></div>
+	</div>
+</section>
+
+
+<script type="text/javascript">
+	var config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 530,
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 300 },
+                debug: false
+            }
+        },
+        backgroundColor: 'FAFFFD',
+        parent: 'phaser-game',
+        scene: {
+        	preload: preload,
+            create: create,
+            update: update
+        }
+    };
+
+    var game = new Phaser.Game(config);
+    var sprite;
+    var popup;
+    var loop;
+    var loop_copy;
+    var reverse_loop;
+    var reverse_loop_copy;
+    var cancel;
+    var add_button;
+    var startblock;
+    var play;
+    var incorrect_answer;
+    var correct_answer;
+    var del_button;
+    var refresh;
+    var start_index;
+    var end_index_x;
+    var end_index_y;
+    var start_index_x;
+    var start_index_y;
+    var score;
+    var scoreText;
+    var blueboxes;
+    var redboxes;
+    var w;
+    var h;
+
+    function preload() {
+    	var exec_pane = this.add.graphics(0, 0);
+    	exec_pane.fillStyle(0x3C91E6, 1.0);
+    	exec_pane.lineStyle(5, 0x02648e, 1.0);
+
+    	exec_pane.fillRect(0, 400, 800, 200);
+
+    	exec_pane.beginPath();
+		exec_pane.moveTo(0, 400);
+		exec_pane.lineTo(800, 400);
+		exec_pane.closePath();
+		exec_pane.strokePath();
+
+		// add "treasure map"
+		var treasure = this.add.graphics(0, 0);
+		w = 250;
+		h = 110;
+		treasure.lineStyle(5, 0x76430a, 0.5);
+		treasure.beginPath();
+
+		// draw grid lines
+		for (var i = 0; i < 7; i++) {
+			treasure.moveTo(w, (i*40 + h));
+			treasure.lineTo(w + 280, (i*40 + h));
+			treasure.moveTo(i*40 + w, 110);
+			treasure.lineTo(i*40 + w, 110 + 240);
+		}
+		treasure.moveTo(i*40 + w, 110);
+		treasure.lineTo(i*40 + w, 110 + 240);
+
+		// add text to the grid for the indices
+		for (var i = 0; i < 6; i++) {
+			this.add.text(w + i*40 + 15, 90, String(i), {
+				fill: "#76430a",
+			});
+			this.add.text(w - 20, i*40 + 15 + h, String(i), {
+				fill: "#76430a",
+			});
+		}
+		this.add.text(w + i*40 + 15, 90, String(i), {
+				fill: "#76430a",
+		});
+
+		// draw X in random position
+		end_index_x = Math.floor(Math.random()*6 + 1);
+		end_index_y = Math.floor(Math.random()*5 + 1);
+		console.log(end_index_x, end_index_y);
+		treasure.moveTo(end_index_x*40 + 10 + w, end_index_y*40 + 10 + h);
+		treasure.lineTo(end_index_x*40 + 30 + w, end_index_y*40 + 30 + h);
+		treasure.moveTo(end_index_x*40 + 30 + w, end_index_y*40 + 10 + h);
+		treasure.lineTo(end_index_x*40 + 10 + w, end_index_y*40 + 30 + h);
+
+		treasure.strokePath();
+		treasure.closePath();
+
+		// add popup box
+		popup = this.add.graphics(0, 0);
+    	popup.fillStyle(0x3C91E6, 1.0);
+    	popup.lineStyle(5, 0x02648e, 1.0);
+
+    	popup.fillRect(500, 180, 280, 200);
+
+    	popup.beginPath();
+		popup.moveTo(500, 180);
+		popup.lineTo(780, 180);
+		popup.moveTo(780, 180);
+		popup.lineTo(780, 380);
+		popup.moveTo(780, 380);
+		popup.lineTo(500, 380);
+		popup.moveTo(500, 380);
+		popup.lineTo(500, 180);
+		popup.closePath();
+		popup.strokePath();
+		popup.depth = 100;
+		popup.visible = false;
+
+		// add start block
+		startblock = this.add.graphics(0, 0);
+		startblock.fillStyle(0x02648e, 1.0);
+		startblock.lineStyle(5, 0x02648e, 1.0);
+		startblock.fillRect(50, 420, 100, 100);
+		startblock.moveTo(50, 420);
+		startblock.lineTo(250, 420);
+		startblock.moveTo(250, 420);
+		startblock.lineTo(250, 520);
+		startblock.moveTo(250, 520);
+		startblock.lineTo(50, 520);
+		startblock.closePath();
+		startblock.strokePath();
+
+
+		// initialize correct and incorrect traversal blocks
+		blueboxes = []
+		for (var i = 0; i < 7; i++) {
+			subarray = [];
+			for (var j = 0; j < 6; j++) {
+				var box = this.add.graphics(0, 0);
+				box.fillStyle(0x3C91E6, 0.5);
+				box.fillRect(w + (i*40), j*40 + h, 40, 40);
+				box.visible = false;
+				subarray.push(box);
+			}
+			blueboxes.push(subarray);
+		}
+		console.log(blueboxes[0][0]);
+
+		redboxes = []
+		for (var i = 0; i < 7; i++) {
+			subarray = [];
+			for (var j = 0; j < 6; j++) {
+				var box = this.add.graphics(0, 0);
+				box.fillStyle(0xFF0000, 0.3);
+				box.fillRect(w + (i*40), j*40 + h, 40, 40);
+				box.visible = false;
+				subarray.push(box);
+
+				var sand = this.add.graphics(0, 0);
+				sand.fillStyle(0xe7cf98, 0.5);
+				sand.fillRect(w + (i*40), j*40 + h, 40, 40);
+			}
+			redboxes.push(subarray);
+		}
+
+
+
+		correct_answer = this.add.graphics(0, 0);
+		correct_answer.fillStyle(0xA2D729, 0.5);
+		correct_answer.fillRect(end_index_x*40 + w, end_index_y*40 + h, 40, 40);
+		correct_answer.visible = false;
+
+		// set start index
+		start_index_x = end_index_x;
+		start_index_y = end_index_y;
+
+		start_index_y = Math.floor(Math.random() *end_index_y);
+		
+		while (start_index_x == end_index_x)
+			start_index_x = Math.floor(Math.random() *6);
+		
+		// add text
+		var header = this.add.text(200, 55, "Start at the red line and end at the X!", {
+			fill: "#000",
+		});
+		var text = this.add.text(75, 459, "start");
+
+		var incr_loop = this.add.text(545, 320, "incrementing", {
+			font: '12px Courier'
+		});
+		incr_loop.depth = 101;
+		var decr_loop = this.add.text(650, 320, "decrementing", {
+			font: '12px Courier'
+		});
+		decr_loop.depth = 101;
+
+		
+
+		var outline = this.add.graphics(0, 0);
+		outline.lineStyle(3, 0x3C91E6, 1.0);
+
+		if (start_index_x < end_index_x) {
+			outline.moveTo(w + (start_index_x * 40), h + (start_index_y* 40));
+			outline.lineTo(w + (end_index_x * 40) + 40, h + (start_index_y* 40));
+			outline.moveTo(w + (end_index_x * 40) + 40, h + (start_index_y* 40));
+			outline.lineTo(w + (end_index_x * 40) + 40, h + (end_index_y* 40) + 40);
+			outline.moveTo(w + (end_index_x * 40) + 40, h + (end_index_y* 40) + 40);
+			outline.lineTo(w + (start_index_x * 40), h + (end_index_y* 40) + 40);
+			outline.moveTo(w + (start_index_x * 40), h + (end_index_y* 40) + 40);
+			outline.lineTo(w + (start_index_x * 40), h + (start_index_y* 40));
+			outline.closePath();
+			outline.strokePath();
+		}
+
+		else {
+			outline.moveTo(w + (end_index_x * 40), h + (start_index_y* 40));
+			outline.lineTo(w + (end_index_x * 40), h + (end_index_y* 40) + 40);
+			outline.moveTo(w + (end_index_x * 40), h + (end_index_y* 40) + 40);
+			outline.lineTo(w + (start_index_x * 40) + 40, h + (end_index_y* 40) + 40);
+			outline.moveTo(w + (start_index_x * 40) + 40, h + (end_index_y* 40) + 40);
+			outline.lineTo(w + (start_index_x * 40) + 40, h + (start_index_y* 40));
+			outline.moveTo(w + (start_index_x * 40) + 40, h + (start_index_y* 40));
+			outline.lineTo(w + (end_index_x * 40), h + (start_index_y* 40));
+			outline.closePath();
+			outline.strokePath();
+		}
+
+		// draw line under starting block
+		var startline = this.add.graphics(0, 0);
+		startline.lineStyle(3, 0xff0000, 1.0);
+		startline.moveTo((start_index_x * 40) + w, start_index_y*40 + h + 40);
+		startline.lineTo((start_index_x * 40) + w + 40, start_index_y*40 + h + 40);
+		startline.closePath();
+		startline.strokePath();
+		
+
+		// initialize score
+		score = 0;
+		scoreText = this.add.text(25, 20, "Score: " + String(score), {
+			fill: "#000",
+		});
+
+		// preload images
+        this.load.image('add_button', 'static/assets/add_button.png');
+        this.load.image('loop', 'static/assets/loop.png');
+        this.load.image('reverse_loop', 'static/assets/reverse_loop.png');
+        this.load.image('cancel', 'static/assets/cancel.png');
+        this.load.image('sprite', 'static/assets/star.png');
+        this.load.image('play', 'static/assets/play.png');
+        this.load.image('del_button', 'static/assets/delete.png');
+        this.load.image('refresh', 'static/assets/refresh.png');
+		
+    }
+
+    function create() {
+    	add_button = this.add.image(750, 430, 'add_button').setInteractive();
+		del_button = this.add.image(710, 430, 'del_button').setInteractive();
+		refresh = this.add.image(670, 430, 'refresh').setInteractive();
+		loop = this.add.image(590, 280, 'loop').setInteractive();
+		reverse_loop = this.add.image(690, 280, 'reverse_loop').setInteractive();
+		play = this.add.image(310, 470, 'play').setInteractive();
+		cancel = this.add.image(755, 200, 'cancel').setInteractive();
+		loop_copy = this.add.image(590, 280, 'loop').setInteractive();
+		reverse_loop_copy = this.add.image(690, 280, 'reverse_loop').setInteractive();
+
+		// set scales
+		loop.scaleX = 0.06;
+		loop.scaleY = 0.06;
+		loop.depth = 101;
+		loop.visible = false;
+		loop_copy.scaleX = 0.06;
+		loop_copy.scaleY = 0.06;
+		loop_copy.depth = 101;
+		loop_copy.visible = false;
+		reverse_loop.scaleX = 0.06;
+		reverse_loop.scaleY = 0.06;
+		reverse_loop.depth = 101;
+		reverse_loop.visible = false;
+		reverse_loop_copy.scaleX = 0.06;
+		reverse_loop_copy.scaleY = 0.06;
+		reverse_loop_copy.depth = 101;
+		reverse_loop_copy.visible = false;
+		add_button.scaleX = 0.05;
+		add_button.scaleY = 0.05;
+		del_button.scaleX = 0.05;
+		del_button.scaleY = 0.05;
+		refresh.scaleX = 0.06;
+		refresh.scaleY = 0.06;
+		play.scaleX = 0.08;
+		play.scaleY = 0.08;
+		play.visible = false;
+		cancel.scaleX = 0.1;
+		cancel.scaleY = 0.1;
+		cancel.depth = 101;
+		cancel.visible = false;
+
+		sprite = this.add.sprite(130, 225, 'sprite');
+
+		// on pointerdown of the add button, pull up popup box and code blocks
+		add_button.on('pointerdown', () => {
+			 add_button.scaleX = 0.03;
+			 add_button.scaleY = 0.03;
+			 // add_button.input.enabled = false;
+			 document.body.style.cursor = 'pointer';
+
+			popup.visible = true;
+			loop.visible = true;
+			reverse_loop.visible = true;
+			cancel.visible = true;
+
+			// loop block events
+			var down = false;
+			this.input.setDraggable(loop);
+			this.input.setDraggable(loop_copy);
+
+			if (start_index_x > end_index_x) {
+				this.input.setDraggable(reverse_loop);
+			}
+
+			this.input.on('drag', function (pointer, gameObject, dragX, dragY) {
+        		gameObject.x = dragX;
+        		gameObject.y = dragY;
+    		});
+
+			loop.on('pointerover', () => {
+				document.body.style.cursor = 'pointer';
+			});
+
+			loop.on('pointerout', () => {
+				if (!down) {
+					document.body.style.cursor = 'default';
+					loop.scaleX = 0.06;
+					loop.scaleY = 0.06;
+				}
+			});
+
+			loop.on('pointerup', () => {
+				loop.scaleX = 0.06;
+				loop.scaleY = 0.06;
+				down = false;
+				if (isInBox(loop)) {
+					loop.x = 200;
+    				loop.y = 470;
+    				loop_copy.visible = true;
+				}
+
+				if (isOverDelete(loop)) {
+					loop.x = 590;
+					loop.y = 280;
+					loop.visible = false;
+					document.getElementById("answer-block").innerHTML = "";
+					add_button.input.enabled = true;
+				}
+			});
+
+			loop.on('pointerdown', () => {
+				document.body.style.cursor = 'pointer';
+				loop.scaleX = 0.04;
+				loop.scaleY = 0.04;
+				down = true;
+			});
+
+			loop_copy.on('pointerover', () => {
+				document.body.style.cursor = 'pointer';
+			});
+
+			loop_copy.on('pointerout', () => {
+				document.body.style.cursor = 'default';
+			});
+
+			loop_copy.on('pointerup', () => {
+				loop_copy.scaleX = 0.06;
+				loop_copy.scaleY = 0.06;
+				down = false;
+				if (isInBox(loop_copy) && isInBox(loop)) {
+					loop_copy.scaleX = 0.03;
+					loop_copy.scaleY = 0.03;
+					loop_copy.x = 200;
+    				loop_copy.y = 467;
+				}
+
+				if (isOverDelete(loop_copy)) {
+					loop_copy.x = 590;
+					loop_copy.y = 280;
+					loop_copy.visible = false;
+					document.getElementById("answer-block").innerHTML = "";
+					add_button.input.enabled = true;
+				}
+			});
+
+			loop_copy.on('pointerdown', () => {
+				document.body.style.cursor = 'pointer';
+				loop_copy.scaleX = 0.04;
+				loop_copy.scaleY = 0.04;
+				down = true;
+			});
+
+			reverse_loop.on('pointerover', () => {
+				document.body.style.cursor = 'pointer';
+			});
+
+			reverse_loop.on('pointerout', () => {
+				document.body.style.cursor = 'default';
+			});
+
+			reverse_loop.on('pointerup', () => {
+				reverse_loop.scaleX = 0.06;
+				reverse_loop.scaleY = 0.06;
+				down = false;
+
+				if (isInBox(reverse_loop) && isInBox(loop)) {
+					reverse_loop.scaleX = 0.03;
+					reverse_loop.scaleY = 0.03;
+					reverse_loop.x = 200;
+    				reverse_loop.y = 470;
+				}
+
+				if (isOverDelete(reverse_loop)) {
+					reverse_loop.x = 690;
+					reverse_loop.y = 280;
+					reverse_loop.visible = false;
+					document.getElementById("answer-block").innerHTML = "";
+					add_button.input.enabled = true;
+				}
+			});
+
+			reverse_loop.on('pointerdown', () => {
+				document.body.style.cursor = 'pointer';
+
+				if (start_index_x < end_index_x)
+					document.getElementById("code-block").innerHTML = "<br><b> HINT: </b> This problem can be solved with two nested incrementing loops!";
+
+				// TODO
+				else {
+					reverse_loop.scaleX = 0.04;
+					reverse_loop.scaleY = 0.04;
+				}
+				down = true;
+			});
+
+			// minimize button events
+			cancel.on('pointerover', () => {
+				document.body.style.cursor = 'pointer';
+			});
+
+			cancel.on('pointerdown', () => {
+				document.body.style.cursor = 'pointer';
+				cancel.scaleX = 0.08;
+				cancel.scaleY = 0.08;
+				popup.visible = false;
+				cancel.visible = false;
+				if (isInPopup(loop)) {
+					loop.visible = false;
+				}
+
+				if (isInPopup(reverse_loop)) {
+					reverse_loop.visible = false;
+				}
+				add_button.input.enabled = true;
+			});
+
+			cancel.on('pointerout', () => {
+				document.body.style.cursor = 'default';
+			});
+
+			// play button events
+			play.on('pointerover', () => {
+				document.body.style.cursor = 'pointer';
+			});
+
+			play.on('pointerout', () => {
+				document.body.style.cursor = 'default';
+				play.scaleX = 0.08;
+				play.scaleY = 0.08;
+			});
+
+			play.on('pointerdown', () => {
+				play.scaleX = 0.06;
+				play.scaleY = 0.06;
+
+				for (var i = 0; i < blueboxes.length; i++) {
+					for (var j = 0; j < blueboxes[0].length; j++) {
+						blueboxes[i][j].visible = false;
+					}
+				}
+
+				for (var i = 0; i < redboxes.length; i++) {
+					for (var j = 0; j < redboxes[0].length; j++) {
+						redboxes[i][j].visible = false;
+					}
+				}
+
+				correct_answer.visible = false;
+
+				document.getElementById("answer-block").innerHTML = "";
+
+				if (isInBox(loop) && isInBox(loop_copy)) runForwardCode();
+				else if (isInBox(loop) && isInBox(reverse_loop)) runBackwardCode();
+			});
+
+			play.on('pointerup', () => {
+				play.scaleX = 0.08;
+				play.scaleY = 0.08;
+			});
+		});
+
+		add_button.on('pointerover', () => {
+			 document.body.style.cursor = 'pointer';
+		});
+
+		add_button.on('pointerout', () => {
+			 document.body.style.cursor = 'default';
+			 add_button.scaleX = 0.05;
+			 add_button.scaleY = 0.05;
+		});
+
+		add_button.on('pointerup', () => {
+			add_button.scaleX = 0.05;
+			add_button.scaleY = 0.05;
+			document.body.style.cursor = 'default';
+		});
+
+		// refresh button events
+		refresh.on('pointerover', () => {
+			 document.body.style.cursor = 'pointer';
+		});
+
+		refresh.on('pointerout', () => {
+			 document.body.style.cursor = 'default';
+			 refresh.scaleX = 0.06;
+			 refresh.scaleY = 0.06;
+		});
+
+		refresh.on('pointerdown', () => {
+				document.body.style.cursor = 'pointer';
+				refresh.scaleX = 0.05;
+				refresh.scaleY = 0.05;
+				reload(0);
+		});
+
+		refresh.on('pointerup', () => {
+			refresh.scaleX = 0.06;
+			refresh.scaleY = 0.06;
+			document.body.style.cursor = 'default';
+		});
+
+    }
+
+    // check if the given object is in the popup box
+    function isInPopup(block) {
+    	if ((block.x >= 500 && block.x < 720) && (block.y >= 180 && block.y < 380)) {
+    		return true;
+    	}
+    	return false;
+    }
+
+     // check if the given object is in the execution block
+    function isInBox(block) {
+    	if (block.x >= 180 && block.x <= 215 && block.y >= 420 && block.y <= 480)
+    		return true;
+    	return false;
+    }
+
+    // 710, 380
+    function isOverDelete(block) {
+    	if ((block.x >= 705 && block.x <= 715) && (block.y >= 425 && block.y <= 435)) {
+    		return true;
+    	}
+    	return false;
+    }
+
+    function update() {
+    	// if the loop block is contained inside the empty square
+    	var div1 = document.getElementById("slider1");
+    	var div2 = document.getElementById("slider2");
+
+    	if (isInBox(loop)) {
+    		if (div1.childNodes.length == 0) {
+    			var slider1 = document.createElement("input");
+    			slider1.setAttribute("id", "start_slider_1");
+    			slider1.setAttribute("type", "range");
+    			slider1.setAttribute("min", 0);
+    			slider1.setAttribute("max", 6);
+    			slider1.style.marginLeft = "135px";
+    			slider1.style.marinTop = "10px";
+
+    			var slider2 = document.createElement("input");
+    			slider2.setAttribute("id", "end_slider_1");
+    			slider2.setAttribute("type", "range");
+    			slider2.setAttribute("min", 0);
+    			slider2.setAttribute("max", 6);
+    			slider2.style.marginLeft = "135px";
+
+    			div1.appendChild(slider1);
+    			div2.appendChild(slider2);
+    		}	
+
+    		else if ((isInBox(loop_copy) || isInBox(reverse_loop)) && (div1.childNodes.length == 1)) {
+	    		var codeblock = document.getElementById("code-block");
+	    		var slider1 = document.getElementById('start_slider_1');
+	    		var slider2 = document.getElementById('end_slider_1');
+
+	    		slider1.style.width = "60px";
+	    		slider2.style.width = "60px";
+	    		slider1.style.display = "inline-block";
+	    		slider2.style.display = "inline-block";
+
+	    		var newslider1 = document.createElement("input");
+	    		newslider1.setAttribute("id", "start_slider_2");
+	    		newslider1.setAttribute("type", "range");
+	    		newslider1.setAttribute("min", 0);
+	    		newslider1.setAttribute("max", 5);
+	    		newslider1.style.marginLeft = "215px";
+	    		newslider1.style.width = "60px";
+	    		newslider1.style.display = "inline-block";
+
+		    	var newslider2 = document.createElement("input");
+		    	newslider2.setAttribute("id", "end_slider_2");
+		    	newslider2.setAttribute("type", "range");
+		    	newslider2.setAttribute("min", 0);
+		    	newslider2.setAttribute("max", 7);
+		    	newslider2.style.marginLeft = "215px";
+		    	newslider2.style.width = "60px";
+		    	newslider2.style.display = "inline-block";
+
+
+		    	div1.appendChild(newslider1);
+		    	div2.appendChild(newslider2);
+
+		    	play.visible = false;
+    		}
+
+    		else if (isInBox(loop_copy) && (div1.childNodes.length > 1)) {
+    			var startslider1 = document.getElementById("start_slider_1");
+    			var endslider1 = document.getElementById("end_slider_1");
+    			var startslider2 = document.getElementById("start_slider_2");
+    			var endslider2 = document.getElementById("end_slider_2");
+
+    			startslider1.onchange = function() {
+    				play.visible = true;
+    			};
+    			endslider1.onchange = function() {
+    				play.visible = true;
+    			};
+
+    			var codeblock = document.getElementById("code-block");
+    			var start1 = startslider1.value;
+    			var end1 = endslider1.value;
+    			var start2 = startslider2.value;
+    			var end2 = endslider2.value;
+
+    			codeblock.innerHTML = "<br /><b>Your code: </b><br /><br />";
+    			codeblock.innerHTML += "boolean[][] arr = new boolean[7][6];<br />";
+    			codeblock.innerHTML += "for (int i = " + "<span style=\"color:#A30005\"><b>" + String(start1) + "</b></span>" + "; i < " + "<span style=\"color:#A30005\"><b>" + String(end1) + "</b></span>" + "; i++) {<br />";
+    			codeblock.innerHTML += "&nbsp &nbsp for (int j = " + "<span style=\"color:#A30005\"><b>" + String(start2) + "</b></span>" + "; j < " + "<span style=\"color:#A30005\"><b>" + String(end2) + "</b></span>" + "; j++) {<br />";
+    			codeblock.innerHTML += "&nbsp &nbsp &nbsp &nbsp arr[i][j] = true;<br /> &nbsp &nbsp }<br />}";
+    		}
+
+    		else if (isInBox(reverse_loop) && (div1.childNodes.length > 1)) {
+    			var startslider1 = document.getElementById("start_slider_1");
+    			var endslider1 = document.getElementById("end_slider_1");
+    			var startslider2 = document.getElementById("start_slider_2");
+    			var endslider2 = document.getElementById("end_slider_2");
+
+    			startslider1.onchange = function() {
+    				play.visible = true;
+    			};
+    			endslider1.onchange = function() {
+    				play.visible = true;
+    			};
+
+    			var codeblock = document.getElementById("code-block");
+    			var start1 = startslider1.value;
+    			var end1 = endslider1.value;
+    			var start2 = startslider2.value;
+    			var end2 = endslider2.value;
+
+    			codeblock.innerHTML = "<br /><b>Your code: </b><br /><br />";
+    			codeblock.innerHTML += "boolean[][] arr = new boolean[7][6];<br />";
+    			codeblock.innerHTML += "for (int i = " + "<span style=\"color:#A30005\"><b>" + String(start1) + "</b></span>" + "; i < " + "<span style=\"color:#A30005\"><b>" + String(end1) + "</b></span>" + "; i++) {<br />";
+    			codeblock.innerHTML += "&nbsp &nbsp for (int j = " + "<span style=\"color:#A30005\"><b>" + String(start2) + "</b></span>" + "; j >= " + "<span style=\"color:#A30005\"><b>" + String(end2) + "</b></span>" + "; j--) {<br />";
+    			codeblock.innerHTML += "&nbsp &nbsp &nbsp &nbsp arr[i][j] = true;<br /> &nbsp &nbsp }<br />}";
+    		}
+
+    		else if ((div1.childNodes.length == 1)) {
+    			var slider1 = document.getElementById("start_slider_1");
+    			var slider2 = document.getElementById("end_slider_1");
+
+    			slider1.onchange = function() {
+    				play.visible = true;
+    			};
+    			slider2.onchange = function() {
+    				play.visible = true;
+    			};
+
+    			var codeblock = document.getElementById("code-block");
+    			var start = slider1.value;
+    			var end = slider2.value;
+    			
+    			codeblock.innerHTML = "<br /><b>Your code: </b><br /><br />";
+    			codeblock.innerHTML += "boolean[] arr = new boolean[7];<br />";
+    			codeblock.innerHTML += "for (int i = " + "<span style=\"color:#A30005\"><b>" + String(start) + "</b></span>" + "; i < " + "<span style=\"color:#A30005\"><b>" + String(end) + "</b></span>" + "; i++) {<br />";
+    			codeblock.innerHTML += "&nbsp &nbsp arr[i] = true; <br />}<br />";
+    		}
+    	}
+
+    	// if the loop block is outside the popup pane but not in the empty square
+    	else if (!isInPopup(loop)) {
+    		popup.visible = false;
+    		cancel.visible = false;
+    		reverse_loop.visible = false;
+    	}
+
+    	else if (!isInPopup(reverse_loop)) {
+    		popup.visible = false;
+    		cancel.visible = false;
+    		loop.visible = false;
+    	}
+
+
+    	// if the loop block is in neither of the two squares
+    	else {
+    		var div1 = document.getElementById("slider1");
+    		var div2 = document.getElementById("slider2");
+    		if (div1.childNodes.length == 1) {
+    			div1.removeChild(div1.childNodes[0]);
+    			div2.removeChild(div2.childNodes[0]);
+    		}
+    		play.visible = false;
+    	}
+
+    	// same checks for reverse loop
+    	if (isInBox(reverse_loop) && !isInBox(loop)) {
+
+    		if (!isInBox(loop)) {
+    			document.getElementById("answer-block").innerHTML = "<br> <b> HINT: </b> The decrementing loop needs to be the inner loop! Drag it over the <br> '-' to try again!";
+    		}
+
+    		else {
+    			var div1 = document.getElementById("slider1");
+    			var div2 = document.getElementById("slider2");
+
+	    		if (div1.childNodes.length == 0) {
+	    			var slider1 = document.createElement("input");
+	    			slider1.setAttribute("id", "start_slider_1");
+	    			slider1.setAttribute("type", "range");
+	    			slider1.setAttribute("min", 0);
+	    			slider1.setAttribute("max", 6);
+	    			slider1.style.marginLeft = "135px";
+
+	    			var slider2 = document.createElement("input");
+	    			slider2.setAttribute("id", "end_slider_1");
+	    			slider2.setAttribute("type", "range");
+	    			slider2.setAttribute("min", 0);
+	    			slider2.setAttribute("max", 6);
+	    			slider2.style.marginLeft = "135px";
+
+	    			div1.appendChild(slider1);
+	    			div2.appendChild(slider2);
+	    		}	
+
+	    		else {
+	    			var slider1 = document.getElementById("start_slider_1");
+	    			var slider2 = document.getElementById("end_slider_1");
+	    			slider1.onchange = function() {
+	    				play.visible = true;
+	    			};
+	    			slider2.onchange = function() {
+	    				play.visible = true;
+	    			};
+
+	    			var codeblock = document.getElementById("code-block");
+	    			var start = slider1.value;
+	    			var end = slider2.value;
+	    			codeblock.innerHTML = "<br /><b>Your code: </b><br /><br />";
+	    			codeblock.innerHTML += "boolean[] arr = new boolean[7];<br />";
+	    			codeblock.innerHTML += "for (int i = " + "<span style=\"color:#A30005\"><b>" + String(start) + "</b></span>" + "; i >= " + "<span style=\"color:#A30005\"><b>" + String(end) + "</b></span>" + "; i--) {<br />";
+	    			codeblock.innerHTML += "&nbsp &nbsp arr[i] = true;<br /> &nbsp }<br />}";
+	    		}
+	    	}
+    	}
+    }
+
+    function runForwardCode() {
+    	var start1 = parseInt(document.getElementById("start_slider_1").value);
+    	var start2 = parseInt(document.getElementById("start_slider_2").value);
+    	var end1 = parseInt(document.getElementById("end_slider_1").value);
+    	var end2 = parseInt(document.getElementById("end_slider_2").value);
+
+    	var answerblock = document.getElementById("answer-block");
+
+    	// Check indices for validity
+    	if (start1 >= end1 || start2 >= end2) {
+    		answerblock.innerHTML = "<br /><b>Check your loop indices to see whether they are valid!  <br />Adjust the sliders to try again!</b><br /><br />";
+    		return;
+    	}
+
+    	// CASE 1: incorrect start
+    	if (start1 != start_index_y || start2 != start_index_x) {
+    		sprite.visible = true;
+    		sprite.x = start1*40 + w + 20;
+    		sprite.y = start2*40 + h + 20;
+
+    		redboxes[start1][start2].visible = true;
+
+    		answerblock.innerHTML = "<br /><b>Incorrect starting indices!  <br />Adjust the sliders to try again!</b><br /><br />";
+    		console.log(start1, start2);
+    		return;
+    	}
+
+    	var x_vals = []
+    	for (var i = start1; i < end1; i++) {
+    		x_vals.push(i);
+    	}
+
+    	var y_vals = []
+    	for (var i = start2; i < end2; i++) {
+    		y_vals.push(i);
+    	}
+
+    	var range = (end1 - start1) * (end2 - start2);
+    	alpha = 0.3;
+
+    	var incorrect_ending = false;
+
+    	// CASE 2: correct start 
+    	for (var i = 0; i < range; i++) {
+	  		(function(i) {
+	    		window.setTimeout(function() {
+	    			var index1 = Math.floor(i / (end2 - start2));
+	    			var index2 = Math.round(i % (end2 - start2));
+	    			console.log(index1, index2);
+
+	    			if (y_vals[index2] > end_index_x || x_vals[index1] > end_index_y) {
+	      				redboxes[y_vals[index2]][x_vals[index1]].visible = true;
+
+	      				incorrect_ending = true;
+	      			}    
+
+	   				else {
+	   					blueboxes[y_vals[index2]][x_vals[index1]].alpha = alpha;
+	      				blueboxes[y_vals[index2]][x_vals[index1]].visible = true;
+	   				}
+
+	      			sprite.visible = true;
+	      			sprite.x = y_vals[index2]*40 + w + 20;
+	      			sprite.y = x_vals[index1]*40 + h + 20;
+
+	      			alpha += 0.05;
+
+	      			if (i == range - 1) {
+	      				if (incorrect_ending) {
+	      					answerblock.innerHTML = "<br /><b>Incorrect ending indices!  <br />Adjust the sliders to try again!</b><br /><br />";
+	      					return;
+	      				}
+
+	      				if (y_vals[index2] != end_index_x || x_vals[index1] != end_index_y) {
+	      					answerblock.innerHTML = "<br /><b>Insufficient traversal! You need to cover more squares to reach the treasure. Try increasing the end indices.  <br />Adjust the sliders to try again!</b><br /><br />";
+	      					return;
+	      				}
+
+	      				if (y_vals[index2] == end_index_x && x_vals[index1] == end_index_y) {
+	      					correct_answer.visible = true;	
+
+	      					answerblock.innerHTML = "<br /><b>Great job!</b> You've passed the last level! Press the refresh button to play again, or try another game by pressing on the dropdown menu on top.<br /> <br /><br />";
+	      					updateScore(100);   
+	      					return;
+	      				}
+	      			}
+
+	    			}, i * 500);
+	  			}(i));
+			}
+    }
+
+    function runBackwardCode() {
+    	var start1 = parseInt(document.getElementById("start_slider_1").value);
+    	var start2 = parseInt(document.getElementById("start_slider_2").value);
+    	var end1 = parseInt(document.getElementById("end_slider_1").value);
+    	var end2 = parseInt(document.getElementById("end_slider_2").value);
+
+    	var answerblock = document.getElementById("answer-block");
+
+    	console.log("entered backward code");
+    	console.log(start1, start2);
+    	console.log(start_index_x, start_index_y);
+
+    	// Check indices for validity
+    	if (start1 >= end1 || start2 < end2) {
+    		answerblock.innerHTML = "<br /><b>Check your loop indices to see whether they are valid!  <br />Adjust the sliders to try again!</b><br /><br />";
+    		return;
+    	}
+
+    	// CASE 1: incorrect start
+    	if (start1 != start_index_y || start2 != start_index_x) {
+    		console.log("entered if 2");
+    		sprite.visible = true;
+    		sprite.x = start2*40 + w + 20;
+    		sprite.y = start1*40 + h + 20;
+
+    		redboxes[start2][start1].visible = true;
+
+    		answerblock.innerHTML = "<br /><b>Incorrect starting indices!  <br />Adjust the sliders to try again!</b><br /><br />";
+    		return;
+    	}
+
+    	var x_vals = []
+    	for (var i = start1; i < end1; i++) {
+    		x_vals.push(i);
+    	}
+
+    	var y_vals = []
+    	for (var i = start2; i >= end2; i--) {
+    		y_vals.push(i);
+    	}
+    	console.log(x_vals, y_vals)
+
+    	var range = (end1 - start1) * (start2 - end2 + 1);
+    	alpha = 0.3;
+
+    	var incorrect_ending = false;
+
+    	// CASE 2: correct start 
+    	for (var i = 0; i < range; i++) {
+	  		(function(i) {
+	    		window.setTimeout(function() {
+	    			// TODO
+	    			var index1 = Math.floor(i / (start2 - end2 + 1));
+	    			var index2 = Math.round(i % (start2 - end2 + 1));
+	    			console.log(index1, index2);
+
+	    			if (y_vals[index2] < end_index_x || x_vals[index1] > end_index_y) {
+	      				redboxes[y_vals[index2]][x_vals[index1]].visible = true;
+
+	      				incorrect_ending = true;
+	      			}    
+
+	   				else {
+	   					blueboxes[y_vals[index2]][x_vals[index1]].alpha = alpha;
+	      				blueboxes[y_vals[index2]][x_vals[index1]].visible = true;
+	   				}
+
+	      			sprite.visible = true;
+	      			sprite.x = y_vals[index2]*40 + w + 20;
+	      			sprite.y = x_vals[index1]*40 + h + 20;
+
+	      			alpha += 0.05;
+
+	      			if (i == range - 1) {
+	      				if (incorrect_ending) {
+	      					answerblock.innerHTML = "<br /><b>Incorrect ending indices!  <br />Adjust the sliders to try again!</b><br /><br />";
+	      					return;
+	      				}
+
+	      				if (y_vals[index2] != end_index_x || x_vals[index1] != end_index_y) {
+	      					answerblock.innerHTML = "<br /><b>Insufficient traversal! You need to cover more squares to reach the treasure. Try increasing the end indices.  <br />Adjust the sliders to try again!</b><br /><br />";
+	      					return;
+	      				}
+
+	      				if (y_vals[index2] == end_index_x && x_vals[index1] == end_index_y) {
+	      					correct_answer.visible = true;	
+
+	      					answerblock.innerHTML = "<br /><b>Great job!</b> You've passed the last level! Press the refresh button to play again, or try another game by pressing on the dropdown menu on top.<br /> <br /><br />"; 
+	      					updateScore(100); 
+	      					return;
+	      				}
+	      			}
+
+	    			}, i * 500);
+	  			}(i));
+			}
+    }
+
+    function updateScore(val) {
+    	scoreText.setText("Score: " + String(parseInt(score) + val));
+    	score = parseInt(score) + val;
+    	return;
+    }
+
+    // refresh the game
+    // @params points - the score that should be there when the game resets
+    function reload(points) {
+    	window.sessionStorage.setItem("score", score);
+    	console.log(window.sessionStorage);
+    	location.reload();
+    	var currScore = window.sessionStorage.getItem("score");
+    	console.log(currScore);
+    	scoreText.setText("Score: " + String(currScore));
+    }
+
+</script>
+
+{% endblock %}
+
+<!-- </body>
+</html> -->
